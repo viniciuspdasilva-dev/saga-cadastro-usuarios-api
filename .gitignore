@@ -24,3 +24,9 @@
 hs_err_pid*
 replay_pid*
 
+.env-dev
+.env-prod
+
+.idea/
+
+!/.env-example
