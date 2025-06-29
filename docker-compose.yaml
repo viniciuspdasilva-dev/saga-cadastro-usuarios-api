@@ -1,12 +1,11 @@
-version: "3.8"
-
 services:
   order-db:
     image: mongo:latest
     container_name: order-db
     restart: always
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.189
     env_file:
       - ./.env_dev
       - ./.env_prod
@@ -28,7 +27,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PRODUCT_PASSWORD}
       PGDATA: ${POSTGRES_PRODUCT_DATA}
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.191
     ports:
       - "5432:5432"
 
@@ -44,10 +44,20 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PAYMENT_PASSWORD}
       PGDATA: ${POSTGRES_PAYMENT_DATA}
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.192
     ports:
       - "5433:5432"
 
+  zookeeper:
+    image: 'confluentinc/cp-zookeeper:latest'
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      orchestrator-saga:
+        ipv4_address: 10.200.0.180
 
   inventory-db:
     container_name: inventory-db
@@ -61,51 +71,30 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_INVENTORY_PASSWORD}
       PGDATA: ${POSTGRES_INVENTORY_DATA}
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.193
     ports:
      - "5434:5432"
 
   kafka:
     container_name: kafka
-    image: obsidiandynamics/kafka
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
     restart: "no"
     ports:
       - "2181:2181"
       - "9092:9092"
     networks:
-      - orchestrator-saga
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
+      orchestrator-saga:
+        ipv4_address: 10.200.0.194
     environment:
-      KAFKA_LISTENERS: ${KAFKA_LISTENERS_HOST}
-      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS_HOSTS}
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
-      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
-      KAFKA_ZOOKEEPER_SESSION_TIMEOUT: ${KAFKA_ZOOKEEPER_SESSION_TIMEOUT}
-      KAFKA_RESTART_ATTEMPTS: "10"
-      KAFKA_RESTART_DELAY: "5"
-      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: "0"
-    volumes:
-      - ./data/kafka/data:/var/lib/kafka/data
-
-  redpanda-console:
-    container_name: redpanda
-    image: docker.redpanda.com/redpandadata/console:v2.3.8
-    restart: on-failure
-    entrypoint: /bin/sh
-    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console
-    ports:
-      - "8081:8080"
-    networks:
-      - orchestrator-saga
-    environment:
-      CONFIG_FILEPATH: /tmp/config.yml
-      CONSOLE_CONFIG_FILE: |
-        kafka: 
-          brokers: ["kafka:29092"]
-    depends_on:
-      - kafka
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://10.200.0.199:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   order_service:
     build: './order-service'
@@ -129,7 +118,8 @@ services:
     depends_on:
       - kafka
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.196
     environment:
       - KAFKA_BROKER=kafka:29092
     ports:
@@ -142,7 +132,8 @@ services:
       - product-db
       - kafka
     networks:
-      - orchestrator-saga
+      orchestrator-saga:
+        ipv4_address: 10.200.0.198
     env_file:
       - ./.env_dev
       - ./.env_prod
@@ -163,7 +154,8 @@ services:
         - payment-db
         - kafka
       networks:
-        - orchestrator-saga
+        orchestrator-saga:
+          ipv4_address: 10.200.0.199
       environment:
         - KAFKA_BROKER=kafka:29092
         - DB_HOST=payment-db
@@ -191,7 +183,33 @@ services:
         - DB_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
       ports:
         - "8092:8092"
+  jaeger:
+    image: 'jaegertracing/all-in-one:latest'
+    container_name: "jaeger"
+    ports:
+      - '5775:5775/udp'
+      - '6831:6831/udp'
+      - '6832:6832/udp'
+      - '5778:5778'
+      - '14268:14268'
+      - '14250:14250'
+      - '16686:16686'
+    expose:
+      - '5775'
+      - '6831'
+      - '6832'
+      - '5778'
+      - '14268'
+      - '14250'
+      - '16686'
+    networks:
+      orchestrator-saga:
+        ipv4_address: 10.200.0.197
 
 networks:
     orchestrator-saga:
       driver: bridge
+      ipam:
+        driver: default
+        config:
+          - subnet: 10.200.0.0/24
