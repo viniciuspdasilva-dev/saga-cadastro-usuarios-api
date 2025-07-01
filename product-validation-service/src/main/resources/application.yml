@@ -1,0 +1,60 @@
+quarkus:
+  http:
+    port: ${QUARKUS_HTTP_PORT:8092}
+  profile: ${QUARKUS_PROFILE:dev}
+  application:
+    name: ${QUARKUS_APP_NAME:orchestrator_app}
+  shutdown:
+    timeout: 5
+  banner:
+    enabled: true
+  datasource:
+    db-kind: ${QUARKUS_DATASOURCE_KIND:postgresql}
+    jdbc:
+      url: ${QUARKUS_DATASOURCE_JDBC_URL:jdbc:postgresql://10.200.0.191:5432/mcinventory}
+    username: ${QUARKUS_DATASOURCE_USERNAME:postgres}
+    password: ${QUARKUS_DATASOURCE_PASSWORD:postgres}
+  hibernate-orm:
+    database:
+      scripts:
+        generation: none
+  liquibase:
+    migrate-at-start: true
+    change-log: "liquibase/changelog.yml"
+  jaeger:
+    enabled: ${QUARKUS_JEAGER_ENABLED:true}
+    service-name: ${quarkus.application.name}-${quarkus.profile}
+    reporter-log-spans: false
+    endpoint: ${QUARKUS_JEAGER_ENDPOINT:http://10.200.0.197:14268/api/traces}
+    sampler-type: const
+    sampler-param: 1
+  log:
+    console:
+      enable: true
+      level: INFO
+      format: "%d{HH:mm:ss} %-5p traceId=%X{traceId}, parentId=%X{parentId}, spanId=%X{spanId}, sampled=%X{sampled} [%c{2.}] (%t) %s%e%n"
+
+kafka:
+  bootstrap:
+    servers: ${KAFKA_BOOTSTRAP_SERVERS:10.200.0.194:9092}
+
+mp:
+  messaging:
+    incoming:
+      # Configuring the incoming channel (reading from Kafka)
+      sec-payment:
+        connector: smallrye-kafka
+        topic: sec-product
+        value:
+          deserializer: br.dev.multicode.utils.deserializers.OrderPaymentMessageDeserializer
+        interceptor:
+          classes: io.opentracing.contrib.kafka.TracingConsumerInterceptor
+    outgoing:
+      # Configuring the outgoing channel (writing to Kafka)
+      sec-response-status:
+        connector: smallrye-kafka
+        topic: sec-response-status
+        value:
+          serializer: io.quarkus.kafka.client.serialization.JsonbSerializer
+        interceptor:
+          classes: io.opentracing.contrib.kafka.TracingProducerInterceptor

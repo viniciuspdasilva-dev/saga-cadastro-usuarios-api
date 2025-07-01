@@ -6,9 +6,6 @@ services:
     networks:
       orchestrator-saga:
         ipv4_address: 10.200.0.189
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_PASSWORD}
@@ -18,9 +15,6 @@ services:
   product-db:
     container_name: product-db
     image: postgres:latest
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
     environment:
       POSTGRES_DB: ${POSTGRES_PRODUCT_DB}
       POSTGRES_USER: ${POSTGRES_PRODUCT_USER}
@@ -35,9 +29,6 @@ services:
   payment-db:
     container_name: payment-db
     image: postgres:latest
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
     environment:
       POSTGRES_DB: ${POSTGRES_PAYMENT_DB}
       POSTGRES_USER: ${POSTGRES_PAYMENT_USER}
@@ -62,9 +53,6 @@ services:
   inventory-db:
     container_name: inventory-db
     image: postgres:latest
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
     environment:
       POSTGRES_DB: ${POSTGRES_INVENTORY_DB}
       POSTGRES_USER: ${POSTGRES_INVENTORY_USER}
@@ -76,115 +64,129 @@ services:
     ports:
      - "5434:5432"
 
+
   kafka:
     container_name: kafka
-    image: confluentinc/cp-kafka:latest
+    image: apache/kafka:latest
     depends_on:
       - zookeeper
-    restart: "no"
     ports:
-      - "2181:2181"
       - "9092:9092"
+      - "29092:29092"
+    expose:
+      - 9092
     networks:
       orchestrator-saga:
         ipv4_address: 10.200.0.194
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://10.200.0.199:9092'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://10.200.0.194:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    restart: "no"
+#  order_service:
+#    build: './order-service'
+#    container_name: order-service
+#    depends_on:
+#      - order-db
+#      - kafka
+#    networks:
+#      - orchestrator-saga
+#    env_file:
+#      - ./.env_dev
+#      - ./.env_prod
+#    environment:
+#      - KAFKA_BROKER=kafka:29092
+#      - MONGO_DB_URI=mongodb://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@order-db:27017
+#    ports:
+#      - "3000:3000"
+#  orchestrator-service:
+#    build: './orchestrator-service'
+#    container_name: orchestrator-service
+#    depends_on:
+#      - kafka
+#    networks:
+#      orchestrator-saga:
+#        ipv4_address: 10.200.0.196
+#    environment:
+#      - KAFKA_BROKER=kafka:29092
+#    ports:
+#      - "8080:8080"
+#
+#  product-validation-service:
+#    build: './product-validation-service'
+#    container_name: product-validation-service
+#    depends_on:
+#      - product-db
+#      - kafka
+#    networks:
+#      orchestrator-saga:
+#        ipv4_address: 10.200.0.198
+#    env_file:
+#      - ./.env_dev
+#      - ./.env_prod
+#    environment:
+#      - KAFKA_BROKER=kafka:29092
+#      - DB_HOST=product-db
+#      - DB_PORT=5432
+#      - DB_NAME=${POSTGRES_INVENTORY_DB}
+#      - DB_USER=${POSTGRES_INVENTORY_USER}
+#      - DB_PASSWORD=${POSTGRES_INVENTORY_PASSWORD}
+#    ports:
+#      - "8090:8090"
+#
+#  payment-service:
+#      build: './payment-service'
+#      container_name: payment-service
+#      depends_on:
+#        - payment-db
+#        - kafka
+#      networks:
+#        orchestrator-saga:
+#          ipv4_address: 10.200.0.199
+#      environment:
+#        - KAFKA_BROKER=kafka:29092
+#        - DB_HOST=payment-db
+#        - DB_PORT=5432
+#        - DB_NAME=${POSTGRES_PAYMENT_DB}
+#        - DB_USER=${POSTGRES_PAYMENT_USER}
+#        - DB_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
+#      ports:
+#        - "8091:8091"
+#
+#  inventory-service:
+#      build: './inventory-service'
+#      container_name: inventory-service
+#      depends_on:
+#        - inventory-db
+#        - kafka
+#      networks:
+#        - orchestrator-saga
+#      environment:
+#        - KAFKA_BROKER=kafka:29092
+#        - DB_HOST=inventory-db
+#        - DB_PORT=5432
+#        - DB_NAME=${POSTGRES_INVENTORY_DB}
+#        - DB_USER=${POSTGRES_INVENTORY_USER}
+#        - DB_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
+#      ports:
+#        - "8092:8092"
 
-  order_service:
-    build: './order-service'
-    container_name: order-service
-    depends_on:
-      - order-db
-      - kafka
-    networks:
-      - orchestrator-saga
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
-    environment:
-      - KAFKA_BROKER=kafka:29092
-      - MONGO_DB_URI=mongodb://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@order-db:27017
-    ports:
-      - "3000:3000"
-  orchestrator-service:
-    build: './orchestrator-service'
-    container_name: orchestrator-service
-    depends_on:
-      - kafka
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.196
-    environment:
-      - KAFKA_BROKER=kafka:29092
-    ports:
-      - "8080:8080"
 
-  product-validation-service:
-    build: './product-validation-service'
-    container_name: product-validation-service
-    depends_on:
-      - product-db
-      - kafka
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.198
-    env_file:
-      - ./.env_dev
-      - ./.env_prod
-    environment:
-      - KAFKA_BROKER=kafka:29092
-      - DB_HOST=product-db
-      - DB_PORT=5432
-      - DB_NAME=${POSTGRES_INVENTORY_DB}
-      - DB_USER=${POSTGRES_INVENTORY_USER}
-      - DB_PASSWORD=${POSTGRES_INVENTORY_PASSWORD}
-    ports:
-      - "8090:8090"
-
-  payment-service:
-      build: './payment-service'
-      container_name: payment-service
-      depends_on:
-        - payment-db
-        - kafka
-      networks:
-        orchestrator-saga:
-          ipv4_address: 10.200.0.199
-      environment:
-        - KAFKA_BROKER=kafka:29092
-        - DB_HOST=payment-db
-        - DB_PORT=5432
-        - DB_NAME=${POSTGRES_PAYMENT_DB}
-        - DB_USER=${POSTGRES_PAYMENT_USER}
-        - DB_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
-      ports:
-        - "8091:8091"
-
-  inventory-service:
-      build: './inventory-service'
-      container_name: inventory-service
-      depends_on:
-        - inventory-db
-        - kafka
-      networks:
-        - orchestrator-saga
-      environment:
-        - KAFKA_BROKER=kafka:29092
-        - DB_HOST=inventory-db
-        - DB_PORT=5432
-        - DB_NAME=${POSTGRES_INVENTORY_DB}
-        - DB_USER=${POSTGRES_INVENTORY_USER}
-        - DB_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
-      ports:
-        - "8092:8092"
   jaeger:
-    image: 'jaegertracing/all-in-one:latest'
+    image: 'jaegertracing/jaeger:2.0.0'
     container_name: "jaeger"
     ports:
       - '5775:5775/udp'
