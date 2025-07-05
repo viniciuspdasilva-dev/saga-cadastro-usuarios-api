@@ -3,14 +3,15 @@ services:
     image: mongo:latest
     container_name: order-db
     restart: always
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.189
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_PASSWORD}
     ports:
       - "27017:27017"
+    expose:
+      - 27017
+    networks:
+      - orchestrator-saga
 
   product-db:
     container_name: product-db
@@ -20,11 +21,12 @@ services:
       POSTGRES_USER: ${POSTGRES_PRODUCT_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PRODUCT_PASSWORD}
       PGDATA: ${POSTGRES_PRODUCT_DATA}
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.191
     ports:
-      - "5432:5432"
+      - "5434:5432"
+    expose:
+      - 5434
+    networks:
+      - orchestrator-saga
 
   payment-db:
     container_name: payment-db
@@ -34,21 +36,12 @@ services:
       POSTGRES_USER: ${POSTGRES_PAYMENT_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PAYMENT_PASSWORD}
       PGDATA: ${POSTGRES_PAYMENT_DATA}
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.192
     ports:
-      - "5433:5432"
-
-  zookeeper:
-    image: 'confluentinc/cp-zookeeper:latest'
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+      - "5435:5432"
+    expose:
+      - 5435
     networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.180
+      - orchestrator-saga
 
   inventory-db:
     container_name: inventory-db
@@ -58,11 +51,36 @@ services:
       POSTGRES_USER: ${POSTGRES_INVENTORY_USER}
       POSTGRES_PASSWORD: ${POSTGRES_INVENTORY_PASSWORD}
       PGDATA: ${POSTGRES_INVENTORY_DATA}
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.193
     ports:
-     - "5434:5432"
+      - "5436:5432"
+    expose:
+      - 5436
+    networks:
+      - orchestrator-saga
+
+  user-db:
+    container_name: user-db
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${POSTGRES_PAYMENT_DB}
+      POSTGRES_USER: ${POSTGRES_PAYMENT_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PAYMENT_PASSWORD}
+      PGDATA: ${POSTGRES_PAYMENT_DATA}
+    ports:
+      - "5437:5432"
+    expose:
+      - 5437
+    networks:
+      - orchestrator-saga
+
+  zookeeper:
+    image: 'confluentinc/cp-zookeeper:latest'
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - orchestrator-saga
 
 
   kafka:
@@ -75,9 +93,6 @@ services:
       - "29092:29092"
     expose:
       - 9092
-    networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.194
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -96,6 +111,8 @@ services:
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     restart: "no"
+    networks:
+      - orchestrator-saga
 #  order_service:
 #    build: './order-service'
 #    container_name: order-service
@@ -205,13 +222,8 @@ services:
       - '14250'
       - '16686'
     networks:
-      orchestrator-saga:
-        ipv4_address: 10.200.0.197
+      - orchestrator-saga
 
 networks:
     orchestrator-saga:
       driver: bridge
-      ipam:
-        driver: default
-        config:
-          - subnet: 10.200.0.0/24

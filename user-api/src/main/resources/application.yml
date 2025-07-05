@@ -1,0 +1,59 @@
+quarkus:
+  http:
+    port: ${QUARKUS_HTTP_PORT:8093}
+  profile: ${QUARKUS_PROFILE:dev}
+  application:
+    name: ${QUARKUS_APP_NAME:user_app}
+  shutdown:
+    timeout: 5
+  banner:
+    enabled: true
+  datasource:
+    db-kind: ${QUARKUS_DATASOURCE_KIND:postgresql}
+    jdbc:
+      url: ${QUARKUS_DATASOURCE_JDBC_URL:jdbc:postgresql://localhost:5437/payment_db_dev}
+    username: ${QUARKUS_DATASOURCE_USERNAME:payment_user_dev}
+    password: ${QUARKUS_DATASOURCE_PASSWORD:payment_pass_dev}
+  hibernate-orm:
+    database:
+      scripts:
+        generation: none
+  liquibase:
+    migrate-at-start: true
+    change-log: "liquibase/changelog.yml"
+  jaeger:
+    enable: ${QUARKUS_JAEGER_ENABLE:true}
+    service-name: ${quarkus.application.name}-${quarkus.profile}
+    reporter-log-spans: false
+    endpoint: ${QUARKUS_JEAGER_ENDPOINT:http://10.200.0.197:14268/api/traces}
+    sampler-type: const
+    sampler-param: 1
+  log:
+    console:
+      enable: true
+      level: INFO
+      format: "%d{HH:mm:ss} %-5p traceId=%X{traceId}, parentId=%X{parentId}, spanId=%X{spanId}, sampled=%X{sampled} [%c{2.}] (%t) %s%e%n"
+
+
+kafka:
+  bootstrap:
+    servers: ${KAFKA_BOOTSTRAP_SERVERS:10.200.0.194:9092}
+
+mp:
+  messaging:
+    incoming:
+      user-api-input:
+        connector: smallrye-kafka
+        topic: user-api-input
+        interceptor:
+          classes: io.opentracing.contrib.kafka.TracingProducerInterceptor
+
+    outgoing:
+      order-response-status:
+        connector: smallrye-kafka
+        topic: order-response-status
+        value:
+          serializer: io.quarkus.kafka.client.serialization.JsonbSerializer
+        interceptor:
+          classes: io.opentracing.contrib.kafka.TracingProducerInterceptor
+
