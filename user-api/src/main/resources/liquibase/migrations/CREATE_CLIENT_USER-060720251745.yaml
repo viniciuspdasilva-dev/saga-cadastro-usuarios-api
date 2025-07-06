@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1751834616220-1
+      author: b-boy
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_client_user
+                  name: client_user_id
+                  type: VARCHAR(36)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_name
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_email
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_password
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_role
+                  type: VARCHAR(100)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+              - column:
+                  name: version
+                  type: INT
+            tableName: client_user
+  - changeSet:
+      id: 1751834616220-2
+      author: b-boy
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: user_email
+            constraintName: uc_client_user_user_email
+            tableName: client_user
+  - changeSet:
+      id: 1751834616220-3
+      author: b-boy
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createIndex:
+            columns:
+              - column:
+                  name: client_user_id
+              - column:
+                  name: user_email
+            indexName: idx_clientId_email
+            tableName: client_user
+  - changeSet:
+      id: 1751834616220-5
+      author: b-boy
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropTable:
+            cascadeConstraints: true
+            tableName: user
+

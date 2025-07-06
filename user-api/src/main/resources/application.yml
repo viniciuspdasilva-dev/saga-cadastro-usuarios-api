@@ -20,7 +20,7 @@ quarkus:
         generation: none
   liquibase:
     migrate-at-start: true
-    change-log: "liquibase/changelog.yml"
+    change-log: "liquibase/changelog.yaml"
   jaeger:
     enable: ${QUARKUS_JAEGER_ENABLE:true}
     service-name: ${quarkus.application.name}-${quarkus.profile}
@@ -45,8 +45,8 @@ mp:
       user-api-input:
         connector: smallrye-kafka
         topic: user-api-input
-        interceptor:
-          classes: io.opentracing.contrib.kafka.TracingProducerInterceptor
+        value:
+          deserializer: com.git.api.users.models.deserializers.OrderCreateUserDeserializer
 
     outgoing:
       order-response-status:
@@ -54,6 +54,4 @@ mp:
         topic: order-response-status
         value:
           serializer: io.quarkus.kafka.client.serialization.JsonbSerializer
-        interceptor:
-          classes: io.opentracing.contrib.kafka.TracingProducerInterceptor
 
